@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import COLORS from './constants';
 import { fetchNiches } from './api';
 import Header from './components/Header';
@@ -20,13 +20,29 @@ export default function App() {
   const [logs, setLogs] = useState([]);
   const [error, setError] = useState(null);
 
+  // Храним ID интервала в ref, чтобы корректно очищать при демонтировании
+  const intervalRef = useRef(null);
+
+  // Гарантированная очистка интервала при размонтировании компонента
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, []);
+
   async function handleScan() {
+    // Очищаем предыдущий интервал если вдруг остался
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+
     setError(null);
     setLogs([]);
     setIsLoading(true);
 
     let logIndex = 0;
-    const interval = setInterval(() => {
+    intervalRef.current = setInterval(() => {
       if (logIndex < LOG_MESSAGES.length) {
         setLogs((prev) => [...prev, LOG_MESSAGES[logIndex]]);
         logIndex++;
@@ -35,12 +51,12 @@ export default function App() {
 
     try {
       const data = await fetchNiches();
-      clearInterval(interval);
       setNiches(data.niches);
     } catch (err) {
-      clearInterval(interval);
       setError(err.message);
     } finally {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
       setIsLoading(false);
     }
   }
@@ -57,7 +73,7 @@ export default function App() {
 
       <ScanButton onClick={handleScan} isLoading={isLoading} />
 
-      {isLoading && <LoadingLog logs={logs} isLoading={isLoading} />}
+      {isLoading && <LoadingLog logs={logs} />}
 
       {error && (
         <div

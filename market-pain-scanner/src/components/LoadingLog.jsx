@@ -1,8 +1,8 @@
 import COLORS from '../constants';
 
-export default function LoadingLog({ logs, isLoading }) {
-  if (!isLoading) return null;
-
+// Компонент всегда рендерится только если родитель решил его показать (isLoading && ...)
+// Поэтому лишняя проверка isLoading внутри не нужна
+export default function LoadingLog({ logs }) {
   return (
     <div
       style={{
@@ -22,12 +22,11 @@ export default function LoadingLog({ logs, isLoading }) {
           {line}
         </div>
       ))}
-      {logs.length > 0 && (
-        <div>
-          {'> '}
-          <span className="blink">▋</span>
-        </div>
-      )}
+      {/* Курсор виден сразу — даже до первого лог-сообщения */}
+      <div>
+        {'> '}
+        <span className="blink">▋</span>
+      </div>
     </div>
   );
 }

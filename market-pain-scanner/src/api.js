@@ -40,7 +40,7 @@ export async function fetchNiches() {
       const errData = await response.json();
       errMsg = errData?.error?.message || errMsg;
     } catch {
-      // ignore
+      // ignore — используем статус код как сообщение
     }
     throw new Error(errMsg);
   }
@@ -53,16 +53,29 @@ export async function fetchNiches() {
     .map((block) => block.text)
     .join('');
 
-  // Strip markdown wrapper if present
-  const stripped = rawText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '');
-
-  // Extract first {...} JSON object
-  const match = stripped.match(/\{[\s\S]*\}/);
-  if (!match) {
-    throw new Error('Не удалось найти JSON в ответе модели');
+  if (!rawText.trim()) {
+    throw new Error('Модель вернула пустой ответ');
   }
 
-  const parsed = JSON.parse(match[0]);
+  // Strip markdown wrapper if present
+  const stripped = rawText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
+
+  // Сначала пробуем распарсить весь ответ как JSON (модель могла ответить чисто)
+  let parsed = null;
+  try {
+    parsed = JSON.parse(stripped);
+  } catch {
+    // Если не вышло — ищем первый {...} через RegExp
+    const match = stripped.match(/\{[\s\S]*\}/);
+    if (!match) {
+      throw new Error('Не удалось найти JSON в ответе модели');
+    }
+    try {
+      parsed = JSON.parse(match[0]);
+    } catch {
+      throw new Error('Некорректный JSON в ответе модели');
+    }
+  }
 
   if (!Array.isArray(parsed.niches)) {
     throw new Error('Поле "niches" не является массивом');
